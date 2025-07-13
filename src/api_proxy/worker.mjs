@@ -11,7 +11,10 @@ export default {
     };
     try {
       const auth = request.headers.get("Authorization");
-      const apiKey = auth?.split(" ")[1];
+      const apiKey = Deno.env.get("GEMINI_API_KEY");
+      if (!apiKey) {
+        throw new HttpError('API_KEY environment variable is not set.', 500);
+      }
       const assert = (success) => {
         if (!success) {
           throw new HttpError("The specified HTTP method is not allowed for the requested resource", 400);
@@ -71,12 +74,11 @@ const API_VERSION = "v1beta";
 const API_CLIENT = "genai-js/0.21.0"; // npm view @google/generative-ai version
 const makeHeaders = (apiKey, more) => ({
   "x-goog-api-client": API_CLIENT,
-  ...(apiKey && { "x-goog-api-key": apiKey }),
   ...more
 });
 
 async function handleModels (apiKey) {
-  const response = await fetch(`${BASE_URL}/${API_VERSION}/models`, {
+  const response = await fetch(`${BASE_URL}/${API_VERSION}/models?key=${apiKey}`, {
     headers: makeHeaders(apiKey),
   });
   let { body } = response;
@@ -110,7 +112,7 @@ async function handleEmbeddings (req, apiKey) {
     req.model = DEFAULT_EMBEDDINGS_MODEL;
     model = "models/" + req.model;
   }
-  const response = await fetch(`${BASE_URL}/${API_VERSION}/${model}:batchEmbedContents`, {
+  const response = await fetch(`${BASE_URL}/${API_VERSION}/${model}:batchEmbedContents?key=${apiKey}`, {
     method: "POST",
     headers: makeHeaders(apiKey, { "Content-Type": "application/json" }),
     body: JSON.stringify({
